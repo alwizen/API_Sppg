@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SppgIntakeResource\Pages;
 
 use App\Filament\Resources\SppgIntakeResource;
+use App\Models\SppgIntake;
 use App\Models\SupplierOrder;
 use App\Models\SupplierOrderItem;
 use Filament\Resources\Pages\ViewRecord;
@@ -13,7 +14,7 @@ use Filament\Forms;
 use Illuminate\Support\Facades\DB;
 use App\Models\Supplier;
 use App\Models\SppgIntakeItem;
-use Filament\Forms\Get;      // <-- tambah ini
+use Filament\Forms\Get;
 use Closure;
 
 class ViewSppgIntake extends ViewRecord
@@ -41,6 +42,81 @@ class ViewSppgIntake extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('applyMarkup')
+                ->label('Terapkan Markup & Publikasikan')
+                ->icon('heroicon-o-currency-dollar')
+                ->color('success')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (! ($user?->hasRole('yayasan') || $user?->hasRole('super_admin'))) {
+                        return false;
+                    }
+
+                    // Tampilkan kalau SEMUA supplier orders sudah Quoted
+                    $intake = $this->record->loadMissing('supplierOrders');
+                    $hasOrders  = $intake->supplierOrders->isNotEmpty();
+                    $allQuoted  = $hasOrders && $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted');
+
+                    return $allQuoted;
+                })
+                ->form([
+                    Forms\Components\TextInput::make('markup_percent')
+                        ->label('Markup (%)')->numeric()->minValue(0)->maxValue(100)->required()->default(10),
+                    Forms\Components\Textarea::make('notes')->label('Catatan')->rows(3)->columnSpanFull(),
+                ])
+                ->successNotificationTitle('Markup diterapkan & intake dipublikasikan.')
+                ->failureNotificationTitle('Semua Supplier Order harus berstatus Quoted dan memiliki harga.')
+                ->action(function (Actions\Action $action, array $data) {
+                    $intake = $this->record->load(['supplierOrders.orderItems']);
+
+                    // Safety: cek lagi semua SO sudah Quoted
+                    if (
+                        $intake->supplierOrders->isEmpty() ||
+                        ! $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted')
+                    ) {
+                        $action->failure();
+                        return;
+                    }
+
+                    // Hitung total biaya dari semua item
+                    $totalCost = 0.0;
+                    foreach ($intake->supplierOrders as $order) {
+                        foreach ($order->orderItems as $oi) {
+                            $line = $oi->subtotal ?? ((float) $oi->qty_allocated * (float) ($oi->price ?? 0));
+                            $totalCost += (float) $line;
+                        }
+                    }
+
+                    $pct         = (float) ($data['markup_percent'] ?? 0);
+                    $totalMarkup = round($totalCost * $pct / 100, 2);
+                    $grandTotal  = round($totalCost + $totalMarkup, 2);
+
+                    // Sinkronkan status ke Quoted bila belum, lalu tandai MarkedUp
+                    $updates = [
+                        'total_cost'     => round($totalCost, 2),
+                        'markup_percent' => $pct,
+                        'total_markup'   => $totalMarkup,
+                        'grand_total'    => $grandTotal,
+                        'marked_up_at'   => now(),
+                        'status'         => SppgIntake::STATUS_MARKEDUP,
+                    ];
+                    if ($intake->status !== SppgIntake::STATUS_QUOTED) {
+                        // ini untuk menutup gap kasus kamu (Allocated tapi semua SO sudah Quoted)
+                        // tidak wajib, tapi rapi di histori
+                        // $intake->status = SppgIntake::STATUS_QUOTED; // tidak perlu diset terpisah karena kita langsung MarkedUp
+                    }
+
+                    // Gabungkan catatan
+                    $updates['notes'] = filled($data['notes'] ?? null)
+                        ? trim((string) $intake->notes . "\n" . $data['notes'])
+                        : $intake->notes;
+
+                    $intake->update($updates);
+
+                    $action->success();
+                    $this->refreshRecord();
+                }),
+
             Actions\Action::make('allocate')
                 ->label('Allocate ke Supplier')
                 ->icon('heroicon-o-arrow-right-circle')
@@ -50,14 +126,27 @@ class ViewSppgIntake extends ViewRecord
                     /** @var \App\Models\SppgIntake $record */
                     $record = $this->record->loadMissing('items');
 
-                    // Siapkan state awal allocations: default qty = remaining
-                    $allocations = $record->items->map(fn($it) => [
-                        'sppg_intake_item_id' => $it->id,
-                        'name'  => $it->name ?? $it->getAttribute('name'), // jaga-jaga
-                        'unit'  => $it->unit,
-                        'remaining' => (float) ($it->remaining_qty ?? ((float)$it->qty - (float)$it->supplierOrderItems()->sum('qty_allocated'))),
-                        'qty'   => (float) ($it->remaining_qty ?? ((float)$it->qty - (float)$it->supplierOrderItems()->sum('qty_allocated'))),
-                    ])->all();
+                    // Siapkan state awal allocations: hanya item yang masih punya sisa
+                    $allocations = $record->items
+                        ->map(function ($it) {
+                            $remaining = (float) ($it->remaining_qty ?? ((float)$it->qty - (float)$it->supplierOrderItems()->sum('qty_allocated')));
+
+                            return [
+                                'sppg_intake_item_id' => $it->id,
+                                'name'  => $it->name ?? $it->getAttribute('name'),
+                                'unit'  => $it->unit,
+                                'remaining' => $remaining,
+                                'qty'   => $remaining,
+                            ];
+                        })
+                        ->filter(fn($item) => $item['remaining'] > 0) // ✅ Filter hanya yang masih ada sisa
+                        ->values()
+                        ->all();
+
+                    // Jika tidak ada item yang bisa dialokasikan
+                    if (empty($allocations)) {
+                        throw new \RuntimeException('Semua item sudah teralokasi penuh. Tidak ada yang bisa dialokasikan lagi.');
+                    }
 
                     return [
                         Forms\Components\Select::make('supplier_id')
@@ -82,10 +171,8 @@ class ViewSppgIntake extends ViewRecord
                                     ->label('Qty → supplier')
                                     ->numeric()
                                     ->step('0.001')
-                                    ->minValue(0) // atau 0.001 kalau wajib > 0
-                                    // ✅ batasi maksimal sesuai sisa pada baris ini
+                                    ->minValue(0)
                                     ->maxValue(fn(Get $get) => (float) ($get('remaining') ?? 0))
-                                    // (opsional) custom message yang lebih enak dibaca:
                                     ->rule(fn(Get $get) => function (string $attribute, $value, Closure $fail) use ($get) {
                                         $remaining = (float) ($get('remaining') ?? 0);
                                         if ((float) $value > $remaining) {
@@ -99,6 +186,18 @@ class ViewSppgIntake extends ViewRecord
                             ->minItems(1)
                             ->collapsed(false)
                     ];
+                })
+                ->visible(function () {
+                    // ✅ Sembunyikan tombol jika tidak ada item yang bisa dialokasikan
+                    /** @var \App\Models\SppgIntake $record */
+                    $record = $this->record->loadMissing('items');
+
+                    $hasRemainingItems = $record->items->some(function ($item) {
+                        $remaining = (float) ($item->remaining_qty ?? ((float)$item->qty - (float)$item->supplierOrderItems()->sum('qty_allocated')));
+                        return $remaining > 0;
+                    });
+
+                    return $hasRemainingItems;
                 })
                 ->action(function (array $data) {
                     /** @var \App\Models\SppgIntake $intake */

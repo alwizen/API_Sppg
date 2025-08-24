@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Login;
+use App\Filament\Resources\SppgIntakeResource;
 use App\Models\User;
 use App\Settings\KaidoSetting;
 use Filament\Http\Middleware\Authenticate;
@@ -54,19 +55,20 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->topNavigation()
-            ->brandName('Yayasan RBJ')
+            ->brandName('YAYASAN RBJ')
             ->path('')
             ->when($this->settings->login_enabled ?? true, fn($panel) => $panel->login(Login::class))
-            ->when($this->settings->registration_enabled ?? true, fn($panel) => $panel->registration())
-            ->when($this->settings->password_reset_enabled ?? true, fn($panel) => $panel->passwordReset())
-            ->emailVerification()
+            // ->when($this->settings->registration_enabled ?? true, fn($panel) => $panel->registration())
+            // ->when($this->settings->password_reset_enabled ?? true, fn($panel) => $panel->passwordReset())
+            // ->emailVerification()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#24c23eff'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                // SppgIntakeResource\Pages\ListSppgIntakes::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
@@ -100,14 +102,14 @@ class AdminPanelProvider extends PanelProvider
     private function getPlugins(): array
     {
         $plugins = [
-            ThemesPlugin::make(),
+            // ThemesPlugin::make(),
             FilamentShieldPlugin::make(),
-            ApiServicePlugin::make(),
+            // ApiServicePlugin::make(),
             BreezyCore::make()
                 ->myProfile(
                     shouldRegisterUserMenu: true, // Sets the 'account' link in the panel User Menu (default = true)
                     shouldRegisterNavigation: true, // Adds a main navigation item for the My Profile page (default = false)
-                    navigationGroup: 'Settings', // Sets the navigation group for the My Profile page (default = null)
+                    navigationGroup: 'User', // Sets the navigation group for the My Profile page (default = null)
                     hasAvatars: true, // Enables the avatar upload form component (default = false)
                     slug: 'my-profile'
                 )
@@ -121,29 +123,29 @@ class AdminPanelProvider extends PanelProvider
                 ->enableTwoFactorAuthentication(),
         ];
 
-        if ($this->settings->sso_enabled ?? true) {
-            $plugins[] =
-                FilamentSocialitePlugin::make()
-                ->providers([
-                    Provider::make('google')
-                        ->label('Google')
-                        ->icon('fab-google')
-                        ->color(Color::hex('#2f2a6b'))
-                        ->outlined(true)
-                        ->stateless(false)
-                ])->registration(true)
-                ->createUserUsing(function (string $provider, SocialiteUserContract $oauthUser, FilamentSocialitePlugin $plugin) {
-                    $user = User::firstOrNew([
-                        'email' => $oauthUser->getEmail(),
-                    ]);
-                    $user->name = $oauthUser->getName();
-                    $user->email = $oauthUser->getEmail();
-                    $user->email_verified_at = now();
-                    $user->save();
+        // if ($this->settings->sso_enabled ?? true) {
+        //     $plugins[] =
+        //         FilamentSocialitePlugin::make()
+        //         ->providers([
+        //             Provider::make('google')
+        //                 ->label('Google')
+        //                 ->icon('fab-google')
+        //                 ->color(Color::hex('#2f2a6b'))
+        //                 ->outlined(true)
+        //                 ->stateless(false)
+        //         ])->registration(true)
+        //         ->createUserUsing(function (string $provider, SocialiteUserContract $oauthUser, FilamentSocialitePlugin $plugin) {
+        //             $user = User::firstOrNew([
+        //                 'email' => $oauthUser->getEmail(),
+        //             ]);
+        //             $user->name = $oauthUser->getName();
+        //             $user->email = $oauthUser->getEmail();
+        //             $user->email_verified_at = now();
+        //             $user->save();
 
-                    return $user;
-                });
-        }
+        //             return $user;
+        //         });
+        // }
         return $plugins;
     }
 }

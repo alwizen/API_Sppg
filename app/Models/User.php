@@ -31,6 +31,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
         'email',
         'password',
         'avatar_url',
+        'supplier_id'
     ];
 
     /**
@@ -56,10 +57,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
         ];
     }
 
-    // public function getFilamentAvatarUrl(): ?string
-    // {
-    //     return asset($this->avatar_url);
-    // }
+    public function supplier()
+    {
+        return $this->belongsTo(\App\Models\Supplier::class);
+    }
 
     public function getFilamentAvatarUrl(): ?string
     {

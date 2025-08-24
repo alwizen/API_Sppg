@@ -11,7 +11,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-
 class SupplierOrderResource extends Resource
 {
     protected static ?string $model = SupplierOrder::class;
@@ -23,17 +22,24 @@ class SupplierOrderResource extends Resource
 
     public static function form(Form $form): Form
     {
-        // read-only header; item & harga lewat RelationManager
-        return $form;
+        return $form; // kita tidak pakai modal Edit
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        if ($user && $user->hasRole('supplier')) {
+            $query->where('supplier_id', $user->supplier_id);
+        }
+
+        return $query;
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $q) {
-                // aman: eager load + hitung count via withCount
-                // $q->with(['supplier', 'intake'])->withCount('orderItems');
-            })
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('intake.po_number')
@@ -44,12 +50,23 @@ class SupplierOrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('status')->badge(),
 
-                // gunakan kolom hasil withCount
-                Tables\Columns\TextColumn::make('items_count')
-                    ->label('Items')->numeric(),
+                // Harga per item (dari relasi orderItems)
+                Tables\Columns\TextColumn::make('prices')
+                    ->label('Harga / Item')
+                    ->state(
+                        fn(SupplierOrder $record) =>
+                        $record->orderItems
+                            ->pluck('price')
+                            ->filter(fn($v) => $v !== null)
+                            ->map(fn($v) => 'Rp ' . number_format((float) $v, 0, ',', '.'))
+                            ->values()
+                            ->all() // <-- pastikan jadi array biasa
+                    )
+                    ->listWithLineBreaks(),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()->label('Dibuat'),
+
+                // Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+                Tables\Columns\TextColumn::make('created_at')->dateTime()->label('Dibuat'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('supplier_id')
@@ -57,7 +74,7 @@ class SupplierOrderResource extends Resource
                 Tables\Filters\SelectFilter::make('status')->options([
                     'Draft' => 'Draft',
                     'Quoted' => 'Quoted',
-                    'Fulfilled' => 'Fulfilled'
+                    'Fulfilled' => 'Fulfilled',
                 ]),
             ])
             ->actions([
@@ -65,10 +82,11 @@ class SupplierOrderResource extends Resource
             ]);
     }
 
+
     public static function getRelations(): array
     {
         return [
-            // ItemsRelationManager::class,
+            ItemsRelationManager::class, // tab Items dengan TextInputColumn price
         ];
     }
 

@@ -10,10 +10,14 @@ class ListSppgIntakes extends ListRecords
 {
     protected static string $resource = SppgIntakeResource::class;
 
+    protected static ?string $modelLabel = 'Daftar PO SPPG';
+
+    protected static string $getTitle = 'Daftar Penerimaan SPPG';
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Actions\CreateAction::make(),
         ];
     }
 }

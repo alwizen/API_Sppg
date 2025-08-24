@@ -24,7 +24,6 @@ class SupplierOrder extends Model
         return $this->belongsTo(\App\Models\SppgIntake::class, 'sppg_intake_id');
     }
 
-
     public function getTotalAttribute(): ?string
     {
         $sum = $this->orderItems()->sum('subtotal');

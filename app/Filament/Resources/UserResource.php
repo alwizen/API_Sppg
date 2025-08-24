@@ -30,6 +30,8 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
+    protected static ?string $navigationGroup = 'User';
+
     public static function form(Form $form): Form
     {
         return $form
@@ -37,13 +39,28 @@ class UserResource extends Resource
                 Section::make(
                     'User Information'
                 )->schema([
-                            TextInput::make('name')
-                                ->required(),
-                            TextInput::make('email')
-                                ->required(),
-                            TextInput::make('password')
-                                ->required(),
-                        ]),
+                    TextInput::make('name')
+                        ->required(),
+                    TextInput::make('email')
+                        ->required(),
+                    TextInput::make('password')
+                        ->required(),
+                    Select::make('supplier_id')
+                        ->label('Supplier')
+                        ->relationship('supplier', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(20)
+                        ->nullable(),
+                    Select::make('roles')
+                        ->label('Roles')
+                        ->relationship('roles', 'name') // guard web
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->helperText('Set role pengguna. Gunakan "supplier" untuk akun supplier.'),
+
+                ]),
             ]);
     }
 

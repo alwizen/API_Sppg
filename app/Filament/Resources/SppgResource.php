@@ -22,6 +22,9 @@ class SppgResource extends Resource
 
     protected static ?string $navigationIcon  = 'heroicon-o-building-storefront';
 
+    protected static ?string $navigationGroup = 'User';
+
+
     protected static ?string $navigationLabel = 'SPPG';
 
     public static function form(Form $form): Form

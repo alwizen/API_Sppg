@@ -19,11 +19,12 @@ class SppgIntakeResource extends Resource
     protected static ?string $model = SppgIntake::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
+
     protected static ?string $navigationGroup = 'Yayasan';
 
     protected static ?string $navigationLabel = 'PO dari SPPG';
 
-    protected static ?string $modelLabel = 'Intake SPPG';
+    protected static ?string $modelLabel = 'Daftar PO SPPG';
 
     public static function form(Form $form): Form
     {
