@@ -32,18 +32,25 @@ class ItemsRelationManager extends RelationManager
 
                 TextInputColumn::make('price')
                     ->label('Harga (IDR)')
-                    // ->numeric()->minValue(0)->step('0.01')
+                    ->type('number')
+                    ->rules(['numeric', 'min:0'])
                     ->disabled(
                         fn(SupplierOrderItem $item) =>
                         ! (auth()->user()?->hasRole('supplier') || auth()->user()?->hasRole('admin'))
                             || optional($item->order)->status !== 'Draft'
                     )
                     ->afterStateUpdated(function ($state, SupplierOrderItem $record) {
+                        // Simpan harga yang diinput
+                        $record->update(['price' => $state]);
+
+                        // Update subtotal langsung
+                        $subtotal = $record->qty_allocated * floatval($state);
+                        $record->update(['subtotal' => $subtotal]);
 
                         // Jika semua item sudah ada harga, ubah status order → Quoted
                         $order = $record->order()->with('orderItems')->first();
                         if ($order && $order->status === 'Draft') {
-                            $allPriced = $order->orderItems->every(fn($i) => $i->price !== null);
+                            $allPriced = $order->orderItems->every(fn($i) => $i->price !== null && $i->price > 0);
                             if ($allPriced) {
                                 $order->update(['status' => 'Quoted']);
                             }
@@ -52,11 +59,14 @@ class ItemsRelationManager extends RelationManager
 
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
-                    // ->money('IDR', true)
-                    ->summarize(Sum::make()->money('IDR', true)),
+                    ->formatStateUsing(fn($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.'))
+                    ->summarize(
+                        Sum::make()
+                            ->formatStateUsing(fn($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.'))
+                    ),
             ])
-            ->headerActions([])    // tak perlu tambah item di sini
-            ->actions([])          // tak perlu EditAction karena sudah inline
-            ->bulkActions([]);     // no bulk
+            ->headerActions([])
+            ->actions([])
+            ->bulkActions([]);
     }
 }

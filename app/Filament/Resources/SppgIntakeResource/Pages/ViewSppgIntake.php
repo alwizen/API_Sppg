@@ -48,28 +48,59 @@ class ViewSppgIntake extends ViewRecord
                 ->color('success')
                 ->visible(function () {
                     $user = auth()->user();
-                    if (! ($user?->hasRole('yayasan') || $user?->hasRole('super_admin'))) {
-                        return false;
+                    if (! ($user?->hasRole('yayasan') || $user?->hasRole('super_admin'))) return false;
+
+                    $intake = $this->record->loadMissing('supplierOrders');
+                    return $intake->supplierOrders->isNotEmpty()
+                        && $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted');
+                })
+                ->form(function () {
+                    // hitung total cost untuk ditampilkan (read-only)
+                    $intake = $this->record->load(['supplierOrders.orderItems']);
+                    $totalCost = 0.0;
+                    foreach ($intake->supplierOrders as $order) {
+                        foreach ($order->orderItems as $oi) {
+                            $line = $oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0));
+                            $totalCost += (float) $line;
+                        }
                     }
 
-                    // Tampilkan kalau SEMUA supplier orders sudah Quoted
-                    $intake = $this->record->loadMissing('supplierOrders');
-                    $hasOrders  = $intake->supplierOrders->isNotEmpty();
-                    $allQuoted  = $hasOrders && $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted');
+                    return [
+                        Forms\Components\Placeholder::make('total_cost_view')
+                            ->label('Total Cost')
+                            ->content('Rp ' . number_format($totalCost, 0, ',', '.')),
 
-                    return $allQuoted;
+                        Forms\Components\Select::make('mode')
+                            ->label('Metode Hitung')
+                            ->options(['percent' => 'Persentase', 'manual' => 'Grand Total Manual'])
+                            ->default('percent')
+                            ->required()
+                            ->live(),
+
+                        Forms\Components\TextInput::make('markup_percent')
+                            ->label('Markup (%)')
+                            ->numeric()->minValue(0)->maxValue(100)
+                            ->default(10)
+                            ->visible(fn(Get $get) => $get('mode') === 'percent'),
+
+                        Forms\Components\TextInput::make('grand_total_manual')
+                            ->label('Grand Total (Manual)')
+                            ->numeric()->minValue(0)
+                            ->visible(fn(Get $get) => $get('mode') === 'manual'),
+
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Catatan')->rows(3)->columnSpanFull(),
+
+                        // simpan total cost sebagai hidden (untuk referensi, tapi tetap dihitung ulang di server)
+                        Forms\Components\Hidden::make('__total_cost_snapshot')->default($totalCost),
+                    ];
                 })
-                ->form([
-                    Forms\Components\TextInput::make('markup_percent')
-                        ->label('Markup (%)')->numeric()->minValue(0)->maxValue(100)->required()->default(10),
-                    Forms\Components\Textarea::make('notes')->label('Catatan')->rows(3)->columnSpanFull(),
-                ])
                 ->successNotificationTitle('Markup diterapkan & intake dipublikasikan.')
                 ->failureNotificationTitle('Semua Supplier Order harus berstatus Quoted dan memiliki harga.')
                 ->action(function (Actions\Action $action, array $data) {
                     $intake = $this->record->load(['supplierOrders.orderItems']);
 
-                    // Safety: cek lagi semua SO sudah Quoted
+                    // safety: semua SO sudah quoted?
                     if (
                         $intake->supplierOrders->isEmpty() ||
                         ! $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted')
@@ -78,43 +109,45 @@ class ViewSppgIntake extends ViewRecord
                         return;
                     }
 
-                    // Hitung total biaya dari semua item
+                    // hitung ulang totalCost dari DB
                     $totalCost = 0.0;
                     foreach ($intake->supplierOrders as $order) {
                         foreach ($order->orderItems as $oi) {
-                            $line = $oi->subtotal ?? ((float) $oi->qty_allocated * (float) ($oi->price ?? 0));
+                            $line = $oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0));
                             $totalCost += (float) $line;
                         }
                     }
 
-                    $pct         = (float) ($data['markup_percent'] ?? 0);
-                    $totalMarkup = round($totalCost * $pct / 100, 2);
-                    $grandTotal  = round($totalCost + $totalMarkup, 2);
+                    // mode perhitungan
+                    $mode = $data['mode'] ?? 'percent';
+                    if ($mode === 'manual') {
+                        $grandTotal  = max(0, (float) ($data['grand_total_manual'] ?? 0));
+                        $totalMarkup = round($grandTotal - $totalCost, 2);
+                        $pct         = $totalCost > 0 ? round(($totalMarkup / $totalCost) * 100, 2) : 0.0;
+                    } else {
+                        $pct         = max(0, (float) ($data['markup_percent'] ?? 0));
+                        $totalMarkup = round($totalCost * $pct / 100, 2);
+                        $grandTotal  = round($totalCost + $totalMarkup, 2);
+                    }
 
-                    // Sinkronkan status ke Quoted bila belum, lalu tandai MarkedUp
-                    $updates = [
+                    $intake->update([
                         'total_cost'     => round($totalCost, 2),
                         'markup_percent' => $pct,
                         'total_markup'   => $totalMarkup,
                         'grand_total'    => $grandTotal,
                         'marked_up_at'   => now(),
                         'status'         => SppgIntake::STATUS_MARKEDUP,
-                    ];
-                    if ($intake->status !== SppgIntake::STATUS_QUOTED) {
-                        // ini untuk menutup gap kasus kamu (Allocated tapi semua SO sudah Quoted)
-                        // tidak wajib, tapi rapi di histori
-                        // $intake->status = SppgIntake::STATUS_QUOTED; // tidak perlu diset terpisah karena kita langsung MarkedUp
-                    }
-
-                    // Gabungkan catatan
-                    $updates['notes'] = filled($data['notes'] ?? null)
-                        ? trim((string) $intake->notes . "\n" . $data['notes'])
-                        : $intake->notes;
-
-                    $intake->update($updates);
+                        'notes'          => filled($data['notes'] ?? null)
+                            ? trim((string) $intake->notes . "\n" . $data['notes'])
+                            : $intake->notes,
+                    ]);
 
                     $action->success();
-                    $this->refreshRecord();
+
+                    // 🔁 refresh tampilan (tanpa refreshRecord)
+                    return $this->redirect(
+                        $this->getResource()::getUrl('view', ['record' => $intake])
+                    );
                 }),
 
             Actions\Action::make('allocate')
