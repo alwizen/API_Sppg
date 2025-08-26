@@ -10,6 +10,7 @@ class SppgIntakeItem extends Model
     protected $fillable = [
         'sppg_intake_id',
         'external_item_id',
+        'kitchen_unit_price',
         'name',
         'qty',
         'unit',
@@ -18,6 +19,7 @@ class SppgIntakeItem extends Model
 
     protected $casts = [
         'qty' => 'decimal:3',
+        'kitchen_unit_price' => 'decimal:2',
     ];
 
     public function intake(): BelongsTo

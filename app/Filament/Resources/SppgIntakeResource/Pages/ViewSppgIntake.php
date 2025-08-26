@@ -47,32 +47,59 @@ class ViewSppgIntake extends ViewRecord
                 ->icon('heroicon-o-currency-dollar')
                 ->color('success')
                 ->visible(function () {
-                    $user = auth()->user();
-                    if (! ($user?->hasRole('yayasan') || $user?->hasRole('super_admin'))) return false;
+                    $u = auth()->user();
+                    if (! $u?->hasAnyRole(['yayasan', 'admin', 'super_admin'])) return false;
 
-                    $intake = $this->record->loadMissing('supplierOrders');
-                    return $intake->supplierOrders->isNotEmpty()
-                        && $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted');
+                    // tombol muncul jika semua SO untuk intake ini sudah Quoted
+                    return ! \App\Models\SupplierOrder::where('sppg_intake_id', $this->record->id)
+                        ->where('status', '!=', 'Quoted')
+                        ->exists();
                 })
                 ->form(function () {
-                    // hitung total cost untuk ditampilkan (read-only)
-                    $intake = $this->record->load(['supplierOrders.orderItems']);
+                    // hitung total cost sekarang (untuk info)
+                    $intake = $this->record->load(['items.supplierOrderItems', 'supplierOrders.orderItems']);
                     $totalCost = 0.0;
                     foreach ($intake->supplierOrders as $order) {
                         foreach ($order->orderItems as $oi) {
-                            $line = $oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0));
-                            $totalCost += (float) $line;
+                            $totalCost += (float) ($oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0)));
                         }
                     }
 
+                    // siapkan daftar item untuk mode per item: qty total, avg harga supplier
+                    $rows = $intake->items->map(function (SppgIntakeItem $it) {
+                        $qty = (float) $it->qty;
+                        $sumCost = 0.0;
+                        $sumQty = 0.0;
+                        foreach ($it->supplierOrderItems as $soi) {
+                            if ($soi->price !== null) {
+                                $sumCost += (float)$soi->price * (float)$soi->qty_allocated;
+                                $sumQty  += (float)$soi->qty_allocated;
+                            }
+                        }
+                        $avgSupplier = $sumQty > 0 ? $sumCost / $sumQty : null;
+
+                        return [
+                            'intake_item_id'      => $it->id,
+                            'name'                => $it->name,
+                            'unit'                => $it->unit,
+                            'total_qty'           => $qty,
+                            'supplier_avg_price'  => $avgSupplier,                 // readonly
+                            'kitchen_unit_price'  => $it->kitchen_unit_price,      // input
+                        ];
+                    })->values()->all();
+
                     return [
                         Forms\Components\Placeholder::make('total_cost_view')
-                            ->label('Total Cost')
+                            ->label('Total Cost (supplier)')
                             ->content('Rp ' . number_format($totalCost, 0, ',', '.')),
 
                         Forms\Components\Select::make('mode')
                             ->label('Metode Hitung')
-                            ->options(['percent' => 'Persentase', 'manual' => 'Grand Total Manual'])
+                            ->options([
+                                'percent' => 'Persentase',
+                                'manual'  => 'Grand Total Manual',
+                                'per_item' => 'Per Item (harga satuan dapur)',
+                            ])
                             ->default('percent')
                             ->required()
                             ->live(),
@@ -88,43 +115,76 @@ class ViewSppgIntake extends ViewRecord
                             ->numeric()->minValue(0)
                             ->visible(fn(Get $get) => $get('mode') === 'manual'),
 
+                        // 🔥 Mode per item: tampilkan daftar item + harga supplier & input harga dapur/unit
+                        Forms\Components\Repeater::make('items_pricing')
+                            ->label('Harga per Item')
+                            ->default($rows)
+                            ->visible(fn(Get $get) => $get('mode') === 'per_item')
+                            ->columns(6)
+                            ->schema([
+                                Forms\Components\Hidden::make('intake_item_id'),
+                                Forms\Components\TextInput::make('name')->disabled()->dehydrated(false)->label('Nama'),
+                                Forms\Components\TextInput::make('unit')->disabled()->dehydrated(false)->label('Sat')->extraInputAttributes(['style' => 'width:80px']),
+                                Forms\Components\TextInput::make('total_qty')->disabled()->dehydrated(false)->numeric()->label('Qty'),
+                                Forms\Components\TextInput::make('supplier_avg_price')
+                                    ->label('Harga Supplier (avg)')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->numeric()
+                                    ->prefix('Rp'),
+                                Forms\Components\TextInput::make('kitchen_unit_price')
+                                    ->label('Harga Dapur / unit')
+                                    ->numeric()->minValue(0)
+                                    ->prefix('Rp')
+                                    ->required(),
+                            ]),
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Catatan')->rows(3)->columnSpanFull(),
-
-                        // simpan total cost sebagai hidden (untuk referensi, tapi tetap dihitung ulang di server)
-                        Forms\Components\Hidden::make('__total_cost_snapshot')->default($totalCost),
                     ];
                 })
                 ->successNotificationTitle('Markup diterapkan & intake dipublikasikan.')
                 ->failureNotificationTitle('Semua Supplier Order harus berstatus Quoted dan memiliki harga.')
                 ->action(function (Actions\Action $action, array $data) {
-                    $intake = $this->record->load(['supplierOrders.orderItems']);
+                    $intake = $this->record->load(['items', 'supplierOrders.orderItems']);
 
-                    // safety: semua SO sudah quoted?
-                    if (
-                        $intake->supplierOrders->isEmpty() ||
-                        ! $intake->supplierOrders->every(fn($so) => $so->status === 'Quoted')
-                    ) {
-                        $action->failure();
-                        return;
-                    }
-
-                    // hitung ulang totalCost dari DB
+                    // total cost (supplier)
                     $totalCost = 0.0;
                     foreach ($intake->supplierOrders as $order) {
                         foreach ($order->orderItems as $oi) {
-                            $line = $oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0));
-                            $totalCost += (float) $line;
+                            $totalCost += (float) ($oi->subtotal ?? ((float)$oi->qty_allocated * (float)($oi->price ?? 0)));
                         }
                     }
 
-                    // mode perhitungan
                     $mode = $data['mode'] ?? 'percent';
-                    if ($mode === 'manual') {
+
+                    if ($mode === 'per_item') {
+                        $rows = collect($data['items_pricing'] ?? []);
+                        if ($rows->isEmpty()) {
+                            $action->failure();
+                            return;
+                        }
+
+                        $grandTotal = 0.0;
+
+                        foreach ($rows as $r) {
+                            $item = SppgIntakeItem::find($r['intake_item_id'] ?? null);
+                            if (! $item) continue;
+
+                            $unitPrice = (float) ($r['kitchen_unit_price'] ?? 0);
+                            $grandTotal += (float) $item->qty * $unitPrice;
+
+                            // simpan harga dapur per item
+                            $item->update(['kitchen_unit_price' => $unitPrice]);
+                        }
+
+                        $totalMarkup = round($grandTotal - $totalCost, 2);
+                        $pct         = $totalCost > 0 ? round(($totalMarkup / $totalCost) * 100, 2) : 0.0;
+                    } elseif ($mode === 'manual') {
                         $grandTotal  = max(0, (float) ($data['grand_total_manual'] ?? 0));
                         $totalMarkup = round($grandTotal - $totalCost, 2);
                         $pct         = $totalCost > 0 ? round(($totalMarkup / $totalCost) * 100, 2) : 0.0;
-                    } else {
+                    } else { // percent
                         $pct         = max(0, (float) ($data['markup_percent'] ?? 0));
                         $totalMarkup = round($totalCost * $pct / 100, 2);
                         $grandTotal  = round($totalCost + $totalMarkup, 2);
@@ -136,15 +196,15 @@ class ViewSppgIntake extends ViewRecord
                         'total_markup'   => $totalMarkup,
                         'grand_total'    => $grandTotal,
                         'marked_up_at'   => now(),
-                        'status'         => SppgIntake::STATUS_MARKEDUP,
+                        'status'         => \App\Models\SppgIntake::STATUS_MARKEDUP,
                         'notes'          => filled($data['notes'] ?? null)
-                            ? trim((string) $intake->notes . "\n" . $data['notes'])
+                            ? trim((string)$intake->notes . "\n" . $data['notes'])
                             : $intake->notes,
                     ]);
 
                     $action->success();
 
-                    // 🔁 refresh tampilan (tanpa refreshRecord)
+                    // refresh halaman
                     return $this->redirect(
                         $this->getResource()::getUrl('view', ['record' => $intake])
                     );

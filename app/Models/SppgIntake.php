@@ -24,7 +24,11 @@ class SppgIntake extends Model
         'submitted_at',
         'external_id',
         'external_meta',
-        'external_hash'
+        'external_hash',
+        'total_cost',
+        'markup_percent',
+        'total_markup',
+        'grand_total'
     ];
 
     protected $casts = [

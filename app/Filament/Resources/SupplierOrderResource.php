@@ -16,7 +16,7 @@ class SupplierOrderResource extends Resource
     protected static ?string $model = SupplierOrder::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationGroup = 'Yayasan';
+    protected static ?string $navigationGroup = 'Supplier';
     protected static ?string $navigationLabel = 'Supplier Orders';
     protected static ?string $modelLabel = 'Supplier Order';
 

@@ -14,11 +14,11 @@ class SupplierOrdersRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->paginated(false)
             ->modifyQueryUsing(fn($query) => $query->with(['orderItems', 'supplier']))
             ->columns([
                 Tables\Columns\TextColumn::make('supplier.name')
-                    ->label('Supplier')
-                    ->searchable(),
+                    ->label('Supplier'),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
                 Tables\Columns\TextColumn::make('order_items_count')

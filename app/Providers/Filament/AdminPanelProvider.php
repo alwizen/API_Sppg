@@ -54,13 +54,18 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->topNavigation()
+            ->sidebarWidth('17rem')
+            ->sidebarFullyCollapsibleOnDesktop()
+            ->navigationGroups([
+                'Yayasan',
+                'Supplier',
+                'User',
+                'Pelindung',
+            ])
+            ->collapsibleNavigationGroups(false)
             ->brandName('YAYASAN RBJ')
             ->path('')
             ->when($this->settings->login_enabled ?? true, fn($panel) => $panel->login(Login::class))
-            // ->when($this->settings->registration_enabled ?? true, fn($panel) => $panel->registration())
-            // ->when($this->settings->password_reset_enabled ?? true, fn($panel) => $panel->passwordReset())
-            // ->emailVerification()
             ->colors([
                 'primary' => Color::hex('#24c23eff'),
             ])
@@ -95,8 +100,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins(
                 $this->getPlugins()
-            )
-            ->databaseNotifications();
+            );
+        // ->databaseNotifications();
     }
 
     private function getPlugins(): array

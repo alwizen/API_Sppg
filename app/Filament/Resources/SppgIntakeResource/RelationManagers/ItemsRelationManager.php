@@ -15,15 +15,18 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
+            ->paginated(false)
             ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Nama')->searchable(),
+                Tables\Columns\TextColumn::make('name')->label('Nama'),
                 Tables\Columns\TextColumn::make('qty')->label('Qty')->numeric(),
                 Tables\Columns\TextColumn::make('unit')->label('Satuan'),
-                // Tables\Columns\TextColumn::make('note')->label('Catatan')->wrap(),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('supplierOrderItems.price')->label('Harga Supplier')->numeric(),
+                Tables\Columns\TextColumn::make('kitchen_unit_price')->label('Harga Markup')->numeric(),
+                Tables\Columns\TextColumn::make('note')->label('Catatan')->wrap(),
+                Tables\Columns\TextColumn::make('created_at')->dateTime(),
             ])
-            ->headerActions([])   // read-only
-            ->actions([])         // no row actions
-            ->bulkActions([]);    // no bulk actions
+            ->headerActions([])
+            ->actions([])
+            ->bulkActions([]);
     }
 }

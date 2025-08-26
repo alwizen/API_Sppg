@@ -26,6 +26,11 @@ class SppgIntakeResource extends Resource
 
     protected static ?string $modelLabel = 'Daftar PO SPPG';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
     public static function form(Form $form): Form
     {
         // Tidak ada Create/Edit untuk sekarang
@@ -35,6 +40,7 @@ class SppgIntakeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->poll('5s')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 return $query->with('sppg')->withCount('items');
             })
@@ -64,6 +70,11 @@ class SppgIntakeResource extends Resource
 
                 Tables\Columns\TextColumn::make('items_count')
                     ->label('Jml Item')
+                    ->numeric()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('grand_total')
+                    ->label('Grand Total')
                     ->numeric()
                     ->toggleable(),
 
