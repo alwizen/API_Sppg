@@ -33,6 +33,8 @@ use Rupadana\ApiService\ApiServicePlugin;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Schema;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -109,6 +111,11 @@ class AdminPanelProvider extends PanelProvider
         $plugins = [
             // ThemesPlugin::make(),
             FilamentShieldPlugin::make(),
+            FilamentBackgroundsPlugin::make()
+                ->imageProvider(
+                    MyImages::make()
+                        ->directory('images/swisnl/bg')
+                ),
             // ApiServicePlugin::make(),
             BreezyCore::make()
                 ->myProfile(
