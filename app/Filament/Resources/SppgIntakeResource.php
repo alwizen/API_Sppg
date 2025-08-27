@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Response;
 
 
 class SppgIntakeResource extends Resource
@@ -119,7 +121,24 @@ class SppgIntakeResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                // (Nanti) Action Allocate di sini
+
+                Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->action(function (SppgIntake $record) {
+                        // Redirect ke route print
+                        return redirect()->route('sppg-intake.print', $record->id);
+                    }),
+
+                Action::make('print_pdf')
+                    ->label('Print PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->action(function (SppgIntake $record) {
+                        // Redirect ke route print PDF
+                        return redirect()->route('sppg-intake.print-pdf', $record->id);
+                    }),
             ])
             ->bulkActions([
                 // none for now

@@ -58,6 +58,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->sidebarWidth('17rem')
             ->sidebarFullyCollapsibleOnDesktop()
+            ->favicon(asset('images/favicon-32x32.png'))
             ->navigationGroups([
                 'Yayasan',
                 'Supplier',
@@ -69,7 +70,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('')
             ->when($this->settings->login_enabled ?? true, fn($panel) => $panel->login(Login::class))
             ->colors([
-                'primary' => Color::hex('#24c23eff'),
+                'primary' => Color::hex('#061D46'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
