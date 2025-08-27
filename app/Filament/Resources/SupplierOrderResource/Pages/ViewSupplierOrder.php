@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SupplierOrderResource\Pages;
 use App\Filament\Resources\SupplierOrderResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Notifications\Notification;
 
 class ViewSupplierOrder extends ViewRecord
 {
@@ -19,16 +20,18 @@ class ViewSupplierOrder extends ViewRecord
                 ->color('primary')
                 ->requiresConfirmation()
                 ->visible(fn() => $this->record->status === 'Draft' && auth()->user()?->hasRole('supplier'))
-                // ✅ pakai built-in notifications
-                ->successNotificationTitle('Penawaran terkirim.')
-                ->failureNotificationTitle('Lengkapi harga semua item dulu.')
-                ->action(function (Actions\Action $action) {
+                ->action(function () {
                     $order = $this->record->load('orderItems');
 
                     // Pastikan semua item sudah ada harga
                     $allPriced = $order->orderItems->every(fn($i) => $i->price !== null);
                     if (! $allPriced) {
-                        $action->failure();   // ⬅️ memicu failure toast dengan title di atas
+                        Notification::make()
+                            ->title('Gagal mengirim penawaran')
+                            ->body('Lengkapi harga semua item terlebih dahulu.')
+                            ->danger()
+                            ->icon('heroicon-o-exclamation-triangle')
+                            ->send();
                         return;
                     }
 
@@ -43,8 +46,13 @@ class ViewSupplierOrder extends ViewRecord
                         $intake->update(['status' => \App\Models\SppgIntake::STATUS_QUOTED]);
                     }
 
-                    $action->success();       // ⬅️ memicu success toast
-                    $this->refreshRecord();
+                    Notification::make()
+                        // ->title('Penawaran berhasil dikirim!')
+                        ->body('Penawaran berhasil dikirim!.')
+                        ->success()
+                        ->icon('heroicon-o-check-circle')
+                        ->duration(4000)
+                        ->send();
                 }),
         ];
     }
