@@ -50,19 +50,18 @@ class SupplierOrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('status')->badge(),
 
-                // Harga per item (dari relasi orderItems)
-                Tables\Columns\TextColumn::make('prices')
-                    ->label('Harga / Item')
-                    ->state(
-                        fn(SupplierOrder $record) =>
-                        $record->orderItems
-                            ->pluck('price')
-                            ->filter(fn($v) => $v !== null)
-                            ->map(fn($v) => 'Rp ' . number_format((float) $v, 0, ',', '.'))
-                            ->values()
-                            ->all() // <-- pastikan jadi array biasa
-                    )
-                    ->listWithLineBreaks(),
+                // Tables\Columns\TextColumn::make('prices')
+                //     ->label('Harga / Item')
+                //     ->state(
+                //         fn(SupplierOrder $record) =>
+                //         $record->orderItems
+                //             ->pluck('price')
+                //             ->filter(fn($v) => $v !== null)
+                //             ->map(fn($v) => 'Rp ' . number_format((float) $v, 0, ',', '.'))
+                //             ->values()
+                //             ->all() 
+                //     )
+                //     ->listWithLineBreaks(),
 
 
                 // Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),

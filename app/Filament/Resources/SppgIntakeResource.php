@@ -126,6 +126,7 @@ class SppgIntakeResource extends Resource
                     ->label('Print')
                     ->icon('heroicon-o-printer')
                     ->color('success')
+                    ->requiresConfirmation()
                     ->action(function (SppgIntake $record) {
                         // Redirect ke route print
                         return redirect()->route('sppg-intake.print', $record->id);
@@ -135,6 +136,7 @@ class SppgIntakeResource extends Resource
                     ->label('Print PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('warning')
+                    ->openUrlInNewTab()
                     ->action(function (SppgIntake $record) {
                         // Redirect ke route print PDF
                         return redirect()->route('sppg-intake.print-pdf', $record->id);

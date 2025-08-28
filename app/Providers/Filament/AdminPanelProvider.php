@@ -70,7 +70,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('')
             ->when($this->settings->login_enabled ?? true, fn($panel) => $panel->login(Login::class))
             ->colors([
-                'primary' => Color::hex('#061D46'),
+                'primary' => Color::hex('#D1B06C'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
