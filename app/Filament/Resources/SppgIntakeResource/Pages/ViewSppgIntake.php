@@ -31,11 +31,11 @@ class ViewSppgIntake extends ViewRecord
                         Info\TextEntry::make('sppg.code')->label('SPPG')->badge(),
                         Info\TextEntry::make('status')->badge(),
                         Info\TextEntry::make('requested_at')->label('Tgl. Diminta')->date(),
-                        Info\TextEntry::make('delivery_time')->label('Jam Kirim'),
-                        Info\TextEntry::make('submitted_at')->label('Submitted')->since(),
+                        // Info\TextEntry::make('delivery_time')->label('Jam Kirim'),
+                        // Info\TextEntry::make('submitted_at')->label('Submitted')->since(),
                         Info\TextEntry::make('notes')->label('Catatan')->columnSpanFull()->visible(fn($record) => filled($record->notes)),
                     ])
-                    ->columns(3),
+                    ->columns(4),
             ]);
     }
 
@@ -43,7 +43,7 @@ class ViewSppgIntake extends ViewRecord
     {
         return [
             Actions\Action::make('applyMarkup')
-                ->label('Terapkan Markup & Publikasikan')
+                ->label('Terapkan Harga Jual')
                 ->icon('heroicon-o-currency-dollar')
                 ->color('success')
                 ->visible(function () {
@@ -332,6 +332,7 @@ class ViewSppgIntake extends ViewRecord
                                 'name'                 => $item->name,
                                 'unit'                 => $item->unit,
                                 'qty_allocated'        => $qty,
+                                'qty_real'             => null,
                                 'price'                => null,
                                 'subtotal'             => null,
                             ]);

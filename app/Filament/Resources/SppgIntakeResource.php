@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Illuminate\Support\Facades\Response;
 
 
@@ -56,23 +57,20 @@ class SppgIntakeResource extends Resource
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('sppg.code')
-                    ->label('SPPG')
+                    ->label('SPPG/Dapur')
                     ->badge()
                     ->searchable()
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('requested_at')
-                    ->label('Tgl. Diminta')
+                    ->label('Tanggal PO')
                     ->date()
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('delivery_time')
-                    ->label('Jam Kirim')
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('items_count')
                     ->label('Jml Item')
                     ->numeric()
+                    ->suffix(' Item')
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('grand_total')
@@ -121,26 +119,32 @@ class SppgIntakeResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                ActionGroup::make([
+                    Action::make('print')
+                        ->label('Print')
+                        ->icon('heroicon-o-printer')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (SppgIntake $record) {
+                            // Redirect ke route print
+                            return redirect()->route('sppg-intake.print', $record->id);
+                        }),
 
-                Action::make('print')
-                    ->label('Print')
+                    Action::make('print_pdf')
+                        ->label('Print PDF')
+                        ->icon('heroicon-o-document-arrow-down')
+                        ->color('warning')
+                        ->openUrlInNewTab()
+                        ->action(function (SppgIntake $record) {
+                            // Redirect ke route print PDF
+                            return redirect()->route('sppg-intake.print-pdf', $record->id);
+                        }),
+                ])
+                    ->label('Cetak')
                     ->icon('heroicon-o-printer')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->action(function (SppgIntake $record) {
-                        // Redirect ke route print
-                        return redirect()->route('sppg-intake.print', $record->id);
-                    }),
+                    ->button()
 
-                Action::make('print_pdf')
-                    ->label('Print PDF')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('warning')
-                    ->openUrlInNewTab()
-                    ->action(function (SppgIntake $record) {
-                        // Redirect ke route print PDF
-                        return redirect()->route('sppg-intake.print-pdf', $record->id);
-                    }),
             ])
             ->bulkActions([
                 // none for now

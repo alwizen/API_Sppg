@@ -13,10 +13,16 @@ class SupplierOrderItem extends Model
         'name',
         'unit',
         'qty_allocated',
+        'qty_real',
         'price',
         'subtotal'
     ];
-    protected $casts = ['qty_allocated' => 'decimal:3', 'price' => 'decimal:2', 'subtotal' => 'decimal:2'];
+    protected $casts = [
+        'qty_allocated' => 'decimal:2',
+        'qty_real'      => 'decimal:2',
+        'price'         => 'decimal:2',
+        'subtotal'      => 'decimal:2',
+    ];
 
     public function intakeItem(): BelongsTo
     {

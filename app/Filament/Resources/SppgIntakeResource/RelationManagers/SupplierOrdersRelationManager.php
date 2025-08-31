@@ -9,7 +9,13 @@ use Filament\Tables\Table;
 class SupplierOrdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'supplierOrders';
+
     protected static ?string $title = 'Supplier Orders';
+
+    public function getTableHeading(): string
+    {
+        return 'Distribusi ke Supplier';
+    }
 
     public function table(Table $table): Table
     {

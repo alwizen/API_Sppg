@@ -11,7 +11,7 @@ Route::get('/user', function (Request $request) {
 
 Route::prefix('v1')->middleware(['sppg.auth', 'throttle:sppg'])->group(function () {
     Route::post('sppgs/{code}/intakes', [SppgIntakeController::class, 'store']);
-    Route::get('sppgs/{code}/intakes/{po_number}', [SppgIntakeController::class, 'show']); // opsional
+    Route::get('sppgs/{code}/intakes/{po_number}', [SppgIntakeController::class, 'show']);
 });
 
 

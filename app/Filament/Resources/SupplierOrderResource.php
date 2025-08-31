@@ -45,6 +45,9 @@ class SupplierOrderResource extends Resource
                 Tables\Columns\TextColumn::make('intake.po_number')
                     ->label('No. PO')->searchable()->copyable(),
 
+                Tables\Columns\TextColumn::make('intake.requested_at')
+                    ->label('Tanggal PO')->date(),
+
                 Tables\Columns\TextColumn::make('supplier.name')
                     ->label('Supplier')->searchable(),
 

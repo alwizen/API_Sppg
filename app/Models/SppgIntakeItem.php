@@ -14,7 +14,8 @@ class SppgIntakeItem extends Model
         'name',
         'qty',
         'unit',
-        'note'
+        'note',
+        'delivery_time_item'
     ];
 
     protected $casts = [
