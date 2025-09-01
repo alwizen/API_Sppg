@@ -9,19 +9,40 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class SupplierOrder extends Model
 {
-    protected $fillable = ['sppg_intake_id', 'supplier_id', 'status', 'notes'];
+    protected $fillable = [
+        'sppg_intake_id',
+        'supplier_id',
+        'status',
+        'notes'
+    ];
 
-    public function orderItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function recalcVerificationStatus(): void
     {
-        return $this->hasMany(\App\Models\SupplierOrderItem::class, 'supplier_order_id');
+        $items = $this->orderItems()->get(['verified_qty']);
+        if ($items->isEmpty()) return;
+
+        $allHave = $items->every(fn($i) => $i->verified_qty !== null);
+        $someHave = $items->some(fn($i) => $i->verified_qty !== null);
+
+        $to = $this->status;
+        if ($allHave) $to = 'Verified';
+        elseif ($someHave && $this->status !== 'Verified') $to = 'PartiallyVerified';
+
+        if ($to !== $this->status) $this->update(['status' => $to]);
     }
-    public function supplier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+
+
+    public function orderItems(): HasMany
     {
-        return $this->belongsTo(\App\Models\Supplier::class);
+        return $this->hasMany(SupplierOrderItem::class, 'supplier_order_id');
     }
-    public function intake(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function supplier(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\SppgIntake::class, 'sppg_intake_id');
+        return $this->belongsTo(Supplier::class);
+    }
+    public function intake(): BelongsTo
+    {
+        return $this->belongsTo(SppgIntake::class, 'sppg_intake_id');
     }
 
     public function getTotalAttribute(): ?string

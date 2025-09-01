@@ -14,5 +14,10 @@ Route::prefix('v1')->middleware(['sppg.auth', 'throttle:sppg'])->group(function 
     Route::get('sppgs/{code}/intakes/{po_number}', [SppgIntakeController::class, 'show']);
 });
 
+Route::middleware(['sppg.auth'])->group(function () {
+    Route::post('v1/sppgs/{code}/receipts', [\App\Http\Controllers\Api\SppgReceiptController::class, 'store']);
+});
+
+
 
 // Route::post('/login', [AuthController::class, 'login']);

@@ -20,9 +20,23 @@ class SupplierOrderItem extends Model
     protected $casts = [
         'qty_allocated' => 'decimal:2',
         'qty_real'      => 'decimal:2',
+        'verified_qty'  => 'decimal:2',
         'price'         => 'decimal:2',
         'subtotal'      => 'decimal:2',
     ];
+
+    public function getBilledSubtotalAttribute(): ?string
+    {
+        if ($this->price === null || $this->verified_qty === null) return null;
+        return number_format((float)$this->price * (float)$this->verified_qty, 2, '.', '');
+    }
+
+    // protected $casts = [
+    //     'qty_allocated' => 'decimal:2',
+    //     'qty_real'      => 'decimal:2',
+    //     'price'         => 'decimal:2',
+    //     'subtotal'      => 'decimal:2',
+    // ];
 
     public function intakeItem(): BelongsTo
     {
