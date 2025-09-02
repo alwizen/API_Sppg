@@ -18,6 +18,10 @@ Route::middleware(['sppg.auth'])->group(function () {
     Route::post('v1/sppgs/{code}/receipts', [\App\Http\Controllers\Api\SppgReceiptController::class, 'store']);
 });
 
+Route::middleware(['sppg.auth'])->prefix('v1/sppgs/{code}')->group(function () {
+    Route::get('receipts/open', [\App\Http\Controllers\Api\SppgReceiptController::class, 'open']);
+    Route::post('receipts',      [\App\Http\Controllers\Api\SppgReceiptController::class, 'store']); // sudah kamu buat
+});
 
 
 // Route::post('/login', [AuthController::class, 'login']);
