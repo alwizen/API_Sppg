@@ -38,17 +38,17 @@ class ItemsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->deferLoading()
             ->paginated(false)
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable(),
 
                 TextColumn::make('intakeItem.delivery_time_item')
                     ->label('Jam Kirim')
+                    ->time('H:i')
                     ->placeholder('-'),
 
                 TextColumn::make('qty_allocated')
-                    ->label('Diminta')
+                    ->label('Jml. Diminta')
                     ->numeric()
                     ->suffix(fn(SupplierOrderItem $record) => ' ' . $record->unit),
 
@@ -58,62 +58,42 @@ class ItemsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->suffix(fn(SupplierOrderItem $record) => $record->qty_real !== null ? ' ' . $record->unit : ''),
 
-                TextColumn::make('price')
-                    ->label('Harga (Rp)')
-                    ->formatStateUsing(fn($state) => $state !== null ? 'Rp ' . number_format((float) $state, 0, ',', '.') : '—'),
-
                 TextColumn::make('verified_qty')
-                    ->label('Verifikasi (SPPG)')
+                    ->label('Jml. Verifikasi (SPPG)')
                     ->numeric()
                     ->placeholder('-')
                     ->suffix(fn(SupplierOrderItem $record) => $record->verified_qty !== null ? ' ' . $record->unit : '')
                     ->tooltip(fn(SupplierOrderItem $record) => $record->verification_note ?: null),
 
-                TextColumn::make('variance_pct')
-                    ->label('Var % (real → verif)')
-                    ->state(function (SupplierOrderItem $record) {
-                        $real = (float) ($record->qty_real ?? 0);
-                        $ver  = (float) ($record->verified_qty ?? 0);
-                        if ($record->verified_qty === null || $real <= 0) return null;
-                        $pct = ($ver - $real) / $real * 100.0;
-                        return sprintf('%+.2f%%', $pct);
-                    })
-                    ->badge()
-                    ->color(function (SupplierOrderItem $record) {
-                        $real = (float) ($record->qty_real ?? 0);
-                        $ver  = (float) ($record->verified_qty ?? 0);
-                        if ($record->verified_qty === null || $real <= 0) return 'gray';
-                        $pct = abs(($ver - $real) / max($real, 0.000001) * 100.0);
-                        return $pct <= 2 ? 'success' : 'warning';
-                    })
-                    ->placeholder('—'),
+                TextColumn::make('price')
+                    ->label('Harga (Rp)')
+                    ->formatStateUsing(fn($state) => $state !== null ? 'Rp ' . number_format((float) $state, 0, ',', '.') : '—'),
 
                 // Total penawaran: qty_real × price
-                TextColumn::make('subtotal')
-                    ->label('Subtotal (Rp)')
-                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) ($state ?? 0), 0, ',', '.'))
-                    ->summarize(
-                        Sum::make()
-                            ->label('Total Penawaran')
-                            ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) ($state ?? 0), 0, ',', '.'))
-                    ),
+                // TextColumn::make('subtotal')
+                //     ->label('Subtotal (Rp)')
+                //     ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) ($state ?? 0), 0, ',', '.'))
+                //     ->summarize(
+                //         Sum::make()
+                //             ->label('Total Penawaran')
+                //             ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) ($state ?? 0), 0, ',', '.'))
+                //     ),
 
-                // Total tagih: price × verified_qty - FIX: gunakan getStateUsing() bukan state()
-                TextColumn::make('billed_total')
-                    ->label('Tagih (verif × harga)')
-                    ->getStateUsing(fn(SupplierOrderItem $record) => (float) ($record->price ?? 0) * (float) ($record->verified_qty ?? 0))
-                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) $state, 0, ',', '.'))
-                    ->summarize(
-                        Summarizer::make()
-                            ->using(function ($query) {
-                                // FIX: gunakan query builder untuk menghitung sum
-                                $sum = $query->get()->sum(function ($record) {
-                                    return (float) ($record->price ?? 0) * (float) ($record->verified_qty ?? 0);
-                                });
-                                return 'Rp ' . number_format($sum, 0, ',', '.');
-                            })
-                            ->label('Grand Total Tagih')
-                    ),
+                // TextColumn::make('billed_total')
+                //     ->label('Tagih (verif × harga)')
+                //     ->getStateUsing(fn(SupplierOrderItem $record) => (float) ($record->price ?? 0) * (float) ($record->verified_qty ?? 0))
+                //     ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) $state, 0, ',', '.'))
+                //     ->summarize(
+                //         Summarizer::make()
+                //             ->using(function ($query) {
+                //                 // FIX: gunakan query builder untuk menghitung sum
+                //                 $sum = $query->get()->sum(function ($record) {
+                //                     return (float) ($record->price ?? 0) * (float) ($record->verified_qty ?? 0);
+                //                 });
+                //                 return 'Rp ' . number_format($sum, 0, ',', '.');
+                //             })
+                //             ->label('Grand Total Tagih')
+                //     ),
             ])
             ->actions([
                 Action::make('inputPrice')

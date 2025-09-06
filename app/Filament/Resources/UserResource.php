@@ -23,6 +23,7 @@ use Filament\Tables\Actions\ExportBulkAction;
 use App\Filament\Resources\UserResource\Pages;
 use STS\FilamentImpersonate\Tables\Actions\Impersonate;
 use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Tables\Actions\ActionGroup;
 
 class UserResource extends Resource
 {
@@ -89,6 +90,11 @@ class UserResource extends Resource
                             ->searchable()
                             ->icon('heroicon-o-shield-check')
                             ->grow(false),
+                        Tables\Columns\TextColumn::make('supplier.name')
+                            ->searchable()
+                            ->icon('heroicon-o-building-storefront')
+                            ->weight(FontWeight::Bold)
+                            ->grow(false),
                         Tables\Columns\TextColumn::make('email')
                             ->icon('heroicon-m-envelope')
                             ->searchable()
@@ -104,8 +110,6 @@ class UserResource extends Resource
                     ->preload(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
                 Action::make('Set Role')
                     ->icon('heroicon-m-adjustments-vertical')
                     ->form([
@@ -117,16 +121,21 @@ class UserResource extends Resource
                             ->preload()
                             ->optionsLimit(10)
                             ->getOptionLabelFromRecordUsing(fn($record) => $record->name),
-                    ]),
-                // Impersonate::make(),
-                Tables\Actions\DeleteAction::make(),
+                    ])->button(),
+                ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+
+                    // Impersonate::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ])
             ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(UserExporter::class),
-                ImportAction::make()
-                    ->importer(UserImporter::class)
-            ])
+            // ->headerActions([
+            //     ExportAction::make()
+            //         ->exporter(UserExporter::class),
+            //     ImportAction::make()
+            //         ->importer(UserImporter::class)
+            // ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

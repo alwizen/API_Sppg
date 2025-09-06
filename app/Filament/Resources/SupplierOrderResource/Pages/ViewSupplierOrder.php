@@ -14,17 +14,17 @@ class ViewSupplierOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('finalizeInvoice')
-                ->label('Finalisasi Nota')
-                ->icon('heroicon-o-document-check')
-                ->color('success')
-                ->visible(fn() => $this->record->status === 'Verified' && auth()->user()?->hasAnyRole(['yayasan', 'admin', 'super_admin']))
-                ->requiresConfirmation()
-                ->action(function () {
-                    // di sini kamu bisa buat tabel invoices + items, atau cukup set status
-                    $this->record->update(['status' => 'Invoiced']);
-                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
-                }),
+            // Actions\Action::make('finalizeInvoice')
+            //     ->label('Finalisasi Nota')
+            //     ->icon('heroicon-o-document-check')
+            //     ->color('success')
+            //     ->visible(fn() => $this->record->status === 'Verified' && auth()->user()?->hasAnyRole(['yayasan', 'admin', 'super_admin']))
+            //     ->requiresConfirmation()
+            //     ->action(function () {
+            //         // di sini kamu bisa buat tabel invoices + items, atau cukup set status
+            //         $this->record->update(['status' => 'Invoiced']);
+            //         $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
+            //     }),
             Actions\Action::make('submitQuote')
                 ->label('Kirim Penawaran')
                 ->icon('heroicon-o-paper-airplane')

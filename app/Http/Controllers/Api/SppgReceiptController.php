@@ -31,7 +31,7 @@ class SppgReceiptController extends Controller
             ->pluck('id');
 
         $q = SupplierOrderItem::query()
-            ->with(['order:id,supplier_id,sppg_intake_id,status', 'order.supplier:id,name', 'intakeItem:id,name,unit,sppg_intake_id'])
+            ->with(['order:id,supplier_id,sppg_intake_id,status', 'order.supplier:id,name', 'intakeItem:id,name,unit,kitchen_unit_price,sppg_intake_id'])
             ->whereHas('order', fn($q) => $q->whereIn('sppg_intake_id', $intakes))
             // hanya order yang minimal sudah Quoted (supplier sudah isi price)
             ->whereHas('order', fn($q) => $q->whereIn('status', ['Quoted', 'PartiallyVerified', 'Verified', 'Invoiced']))
@@ -51,7 +51,7 @@ class SppgReceiptController extends Controller
                 'unit'       => $i->unit ?? optional($i->intakeItem)->unit,
                 'qty_allocated' => (string) $i->qty_allocated,
                 'qty_real'      => $i->qty_real ? (string)$i->qty_real : null,
-                'price'         => $i->price ? (string)$i->price : null,
+                'kitchen_unit_price' => optional($i->intakeItem)->kitchen_unit_price ? (string)optional($i->intakeItem)->kitchen_unit_price : null,
                 'verified_qty'  => $i->verified_qty ? (string)$i->verified_qty : null,
             ];
         });

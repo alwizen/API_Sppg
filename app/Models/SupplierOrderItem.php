@@ -12,6 +12,7 @@ class SupplierOrderItem extends Model
         'sppg_intake_item_id',
         'name',
         'unit',
+        'verified_qty',
         'qty_allocated',
         'qty_real',
         'price',

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SppgIntakeResource\RelationManagers;
 
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Table;
 
 class ItemsRelationManager extends RelationManager
@@ -22,14 +23,36 @@ class ItemsRelationManager extends RelationManager
         return $table
             ->paginated(false)
             ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Nama'),
-                Tables\Columns\TextColumn::make('qty')->label('Qty')->numeric(),
-                Tables\Columns\TextColumn::make('unit')->label('Satuan'),
-                Tables\Columns\TextColumn::make('supplierOrderItems.price')->label('Harga Supplier')->numeric()->placeholder('Belum Ditetapkan'),
-                Tables\Columns\TextColumn::make('kitchen_unit_price')->label('Harga Jual')->numeric()->placeholder('Belum Ditetapkan'),
-                Tables\Columns\TextColumn::make('delivery_time_item')->label('Waktu Pengiriman')->time('H:i'),
-                Tables\Columns\TextColumn::make('note')->label('Catatan')->wrap()->placeholder('Tidak Ada Catatan'),
-                Tables\Columns\TextColumn::make('created_at')->dateTime(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nama'),
+                Tables\Columns\TextColumn::make('qty')
+                    ->label('Jml. Req')
+                    ->numeric(),
+                Tables\Columns\TextColumn::make('supplierOrderItems.qty_real')
+                    ->label('Jml. Kirim')
+                    ->numeric()
+                    ->placeholder('Belum Ditetapkan'),
+                Tables\Columns\TextColumn::make('supplierOrderItems.verified_qty')
+                    ->label('Jml. Verif')
+                    ->numeric()
+                    ->placeholder('Belum Ditetapkan'),
+                Tables\Columns\TextColumn::make('unit')
+                    ->label('Satuan'),
+                Tables\Columns\TextColumn::make('supplierOrderItems.price')
+                    ->label('Harga Supplier')
+                    ->numeric()->placeholder('Belum Ditetapkan'),
+                Tables\Columns\TextColumn::make('delivery_time_item')
+                    ->label('Pengiriman')
+                    ->time('H:i'),
+                Tables\Columns\TextColumn::make('note')
+                    ->label('Catatan')
+                    ->wrap()
+                    ->placeholder('Tidak Ada Catatan'),
+                Tables\Columns\TextColumn::make('kitchen_unit_price')
+                    ->label('Harga Jual')
+                    ->numeric()
+                    ->placeholder('Belum Ditetapkan')
+                    ->summarize(Sum::make()),
             ])
             ->headerActions([])
             ->actions([])

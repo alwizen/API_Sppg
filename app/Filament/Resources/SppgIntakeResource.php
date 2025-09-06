@@ -76,6 +76,7 @@ class SppgIntakeResource extends Resource
                 Tables\Columns\TextColumn::make('grand_total')
                     ->label('Grand Total')
                     ->numeric()
+                    ->placeholder('Belum ditetapkan')
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('status')
